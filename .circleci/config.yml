@@ -115,7 +115,7 @@ workflows:
               only:
                 - develop
                 - master
-                - dev/test-baseline-setup
+                - dev/test-happy-path
       - tile-builder:
           requires:
             - deploy-nozzle
@@ -129,7 +129,6 @@ workflows:
           filters:
             branches:
               only:
-                - INGEST-15507-nozzle-v2-update
                 - develop
                 - master
-                - dev/test-baseline-setup
+                - dev/test-happy-path
