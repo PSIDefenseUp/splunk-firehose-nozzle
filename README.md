@@ -32,12 +32,12 @@ Manifest example:
 
 # Clients
 uaa.clients:
-    splunk-firehose:
-      id: splunk-firehose
-      override: true
-      secret: splunk-firehose-secret
-      authorized-grant-types: client_credentials,refresh_token
-      authorities: doppler.firehose,cloud_controller.admin_read_only
+  splunk-firehose:
+    id: splunk-firehose
+    override: true
+    secret: splunk-firehose-secret
+    authorized-grant-types: client_credentials,refresh_token
+    authorities: doppler.firehose,cloud_controller.admin_read_only
 ```
 
 `uaac` example:
@@ -95,18 +95,35 @@ This is recommended for dev environments only.
 * `HEC_WORKERS`: Set the amount of Splunk HEC workers to increase concurrency while ingesting in Splunk.
 * `ENABLE_EVENT_TRACING`: Enables event trace logging. Splunk events will now contain a UUID, Splunk Nozzle Event Counts, and a Subscription-ID for Splunk correlation searches.
 * `SPLUNK_VERSION`: The Splunk version that determines how HEC ingests metadata fields. Only required for Splunk version 6.3 or below.
-    ###  Please note 
-    > SPLUNK_VERSION configuration parameter is only required for Splunk version 6.3 and below. 
+    ###  Please note
+    > SPLUNK_VERSION configuration parameter is only required for Splunk version 6.3 and below.
     For Splunk version 6.3 or below, please deploy nozzle via CLI. Update nozzle_manifest.yml with splunk_version (eg:- SPLUNK_VERSION: 6.3) as an env variable and [deploy nozzle as an app via CLI](#push-as-an-app-to-cloud-foundry).
-    
+
     **[Tile](https://network.pivotal.io/products/splunk-nozzle/)** only supports deployment for Splunk version 6.4 or above
-    
+* `ORG_INDEX_MAPPING_FILEPATH`: The path to a config file mapping Cloud Foundry orgs to Splunk indices. If provided, uses the specified file to route logs to Splunk and discards any messages for unmapped orgs. Messages not linked to a CF app will be routed to the index specified by `SPLUNK_INDEX`.
+
+    config file example:
+    ```yaml
+
+    # any orgs not configured here will have their logs discarded
+    mappings:
+    # send messages from this org and within the listed spaces to the given index
+    # messages from other spaces in this org will be discarded
+    - org: org-name-a
+      spaces:
+      - space-a
+      - space-b
+      target_splunk_index: splunk-index-a
+    # send messages from this org in any space to the given index
+    - org: org-name-b
+      target_splunk_index: splunk-index-b
+    ```
 - - - -
 
 ### Push as an App to Cloud Foundry
 
 Push Splunk Firehose Nozzle as an application to Cloud Foundry. Please refer to **Setup** section for details
-on user authentication. 
+on user authentication.
 
 1. Download the latest release
 
@@ -177,7 +194,7 @@ applications:
 Logs can be routed using fields such as app ID/name, space ID/name or org ID/name.
 Users can configure the Splunk configuration files props.conf and transforms.conf on Splunk indexers or Splunk Heavy Forwarders if deployed.
 
-Below are few sample configuration: 
+Below are few sample configuration:
 
 <span>1. </span> Route data from application ID `95930b4e-c16c-478e-8ded-5c6e9c5981f8` to a Splunk `prod` index:
 
@@ -215,7 +232,7 @@ FORMAT = sales
 ```
 
 <span>3.</span> Routing data from sourcetype `cf:splunknozzle` to index `new_index`:
- 
+
 *$SPLUNK_HOME/etc/system/local/props.conf*
 ```
 [cf:splunknozzle]
@@ -267,7 +284,7 @@ This error usually occurs when SSL is enabled on the Splunk HEC endpoint. Confir
 
 This usually means the index value specified in the configuration doesn't exist on Splunk Host. Confirm that you're using the correct Splunk index value.
 
-  
+
 <pre class="terminal">{"timestamp":"<time>","source":"splunk-nozzle-logger","message":"splunk-nozzle-logger.Unable to talk to Splunk","log_level":2,"data":{"error":"Non-ok response code [403] from splunk: {\"text\":\"Invalid token\",\"code\":4}"}}</pre>
 
 This can occur when the Splunk HEC Token value is invalid. Confirm that you're using a valid token.
@@ -281,13 +298,13 @@ This usually means that there was no valid SSL certificate found. Confirm that y
 
 <pre class="terminal">{"timestamp":"<time>","source":"splunk-nozzle-logger","message":"splunk-nozzle-logger.Unable to talk to Splunk","log_level":2,"data":{"error":"Post https://localhost:8088/services/collector: dial tcp localhost:8088: getsockopt: connection refused"}}</pre>
 
-This error can occur when the Splunk server is offline or when the Splunk HEC URL is not valid. Confirm that both the Splunk server is running and that you're using a valid URL. 
+This error can occur when the Splunk server is offline or when the Splunk HEC URL is not valid. Confirm that both the Splunk server is running and that you're using a valid URL.
 
 #### Cloud Foundry configuration related errors:
 
 <pre class="terminal">{"timestamp":"<time>","source":"splunk-nozzle-logger","message":"splunk-nozzle-logger.Failed to run splunk-firehose-nozzle","log_level":2,"data":{"error":"Error getting token: oauth2: cannot fetch token: 401 Unauthorized\nResponse: {\"error\":\"unauthorized\",\"error_description\":\"Bad credentials\"}"}}</pre>
 
-This error can occur when the credentials provided for CF environment are invalid. Confirm that the API User and API Password each have access to the CF environment. 
+This error can occur when the credentials provided for CF environment are invalid. Confirm that the API User and API Password each have access to the CF environment.
 
 
 <pre class="terminal">{"timestamp":"<time>","source":"splunk-nozzle-logger","message":"splunk-nozzle-logger.Failed to run splunk-firehose-nozzle","log_level":2,"data":{"error":"Could not get api /v2/info: Get https://api.cfendpoint.com/v2/info: x509: certificate signed by unknown authority"}}</pre>
@@ -450,4 +467,3 @@ $ ./tools/nozzle.sh
 # Maintenance And Support
 
 Splunk Firehose Nozzle project is supported through Splunk Support assuming the customer has a current Splunk support entitlement.  For customers that do not have a current Splunk support entitlement, please file an issue at [create a new issue](https://github.com/cloudfoundry-community/splunk-firehose-nozzle/issues/new/choose)
-
