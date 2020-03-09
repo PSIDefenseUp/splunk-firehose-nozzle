@@ -6,10 +6,15 @@ import (
 
 type MemoryCacheMock struct {
 	ignoreApp bool
+	orgName string
+	spaceName string
 }
 
 func NewMemoryCacheMock() *MemoryCacheMock {
-	return &MemoryCacheMock{}
+	return &MemoryCacheMock {
+		orgName: "testing-org",
+		spaceName: "testing-space",
+	}
 }
 
 func (c *MemoryCacheMock) Open() error {
@@ -28,9 +33,9 @@ func (c *MemoryCacheMock) GetApp(appGuid string) (*cache.App, error) {
 	app := &cache.App{
 		Name:       "testing-app",
 		Guid:       "f964a41c-76ac-42c1-b2ba-663da3ec22d5",
-		SpaceName:  "testing-space",
+		SpaceName:  c.spaceName,
 		SpaceGuid:  "f964a41c-76ac-42c1-b2ba-663da3ec22d6",
-		OrgName:    "testing-org",
+		OrgName:    c.orgName,
 		OrgGuid:    "f964a41c-76ac-42c1-b2ba-663da3ec22d7",
 		IgnoredApp: c.ignoreApp,
 	}
@@ -40,4 +45,12 @@ func (c *MemoryCacheMock) GetApp(appGuid string) (*cache.App, error) {
 
 func (c *MemoryCacheMock) SetIgnoreApp(ignore bool) {
 	c.ignoreApp = ignore
+}
+
+func (c *MemoryCacheMock) SetOrgName(orgName string) {
+	c.orgName = orgName
+}
+
+func (c *MemoryCacheMock) SetSpaceName(spaceName string) {
+	c.spaceName = spaceName
 }

@@ -2,6 +2,7 @@ package splunknozzle
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"code.cloudfoundry.org/lager"
@@ -12,6 +13,7 @@ import (
 	"github.com/cloudfoundry-community/splunk-firehose-nozzle/eventsink"
 	"github.com/cloudfoundry-community/splunk-firehose-nozzle/eventsource"
 	"github.com/cloudfoundry-community/splunk-firehose-nozzle/eventwriter"
+	"gopkg.in/yaml.v2"
 
 	"github.com/cloudfoundry-community/splunk-firehose-nozzle/nozzle"
 	"github.com/google/uuid"
@@ -28,11 +30,41 @@ func NewSplunkFirehoseNozzle(config *Config) *SplunkFirehoseNozzle {
 	}
 }
 
+func (s *SplunkFirehoseNozzle) getMappingsFromConfig(yamlConfig string) ([]eventrouter.OrgSplunkMapping, error) {
+	mappingConfig := eventrouter.OrgSplunkMappingConfig{}
+
+	err := yaml.Unmarshal([]byte(yamlConfig), &mappingConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if mappingConfig.Mappings == nil {
+		mappingConfig.Mappings = []eventrouter.OrgSplunkMapping {}
+	}
+
+	return mappingConfig.Mappings, nil
+}
+
 // EventRouter creates EventRouter object and setup routes for interested events
 func (s *SplunkFirehoseNozzle) EventRouter(cache cache.Cache, eventSink eventsink.Sink) (eventrouter.Router, error) {
+	orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+	if (s.config.OrgConfigFilepath != "") {
+		orgConfigYaml, err := ioutil.ReadFile(s.config.OrgConfigFilepath)
+		if err != nil {
+			return nil, err
+		}
+
+		orgIndexMappings, err = s.getMappingsFromConfig(string(orgConfigYaml))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	config := &eventrouter.Config{
 		SelectedEvents: s.config.WantedEvents,
+		OrgIndexMappings: orgIndexMappings,
 	}
+
 	return eventrouter.New(cache, eventSink, config)
 }
 

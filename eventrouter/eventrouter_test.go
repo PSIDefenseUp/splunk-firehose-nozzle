@@ -1,6 +1,7 @@
 package eventrouter_test
 
 import (
+	"github.com/cloudfoundry-community/splunk-firehose-nozzle/eventrouter"
 	. "github.com/cloudfoundry-community/splunk-firehose-nozzle/eventrouter"
 	"github.com/cloudfoundry-community/splunk-firehose-nozzle/testing"
 	"github.com/cloudfoundry/sonde-go/events"
@@ -141,6 +142,131 @@ var _ = Describe("eventrouter", func() {
 	It("Route ignore app", func() {
 		noCache.SetIgnoreApp(true)
 		eventType = events.Envelope_LogMessage
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(0))
+		Expect(len(memSink.Messages)).To(Equal(0))
+	})
+
+	It("Route whitelisted org", func() {
+		orgName := "test-org-name"
+
+		noCache.SetOrgName(orgName)
+
+		orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+		orgIndexMappings = append(orgIndexMappings, eventrouter.OrgSplunkMapping { Org: orgName, DestinationIndex: "somewhere" })
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStart,HttpStop,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			OrgIndexMappings: orgIndexMappings,
+		}
+
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(1))
+		Expect(len(memSink.Messages)).To(Equal(1))
+	})
+
+	It("Route org log when no org-index mappings provided", func() {
+		orgName := "test-org-name"
+
+		noCache.SetOrgName(orgName)
+
+		orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStart,HttpStop,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			OrgIndexMappings: orgIndexMappings,
+		}
+
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(1))
+		Expect(len(memSink.Messages)).To(Equal(1))
+	})
+
+	It("Route non-whitelisted org", func() {
+		noCache.SetOrgName("some-other-org-name")
+
+		orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+		orgIndexMapping := eventrouter.OrgSplunkMapping {
+			Org: "someorg",
+			DestinationIndex: "somewhere",
+		}
+		orgIndexMappings = append(orgIndexMappings, orgIndexMapping)
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStart,HttpStop,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			OrgIndexMappings: orgIndexMappings,
+		}
+
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(0))
+		Expect(len(memSink.Messages)).To(Equal(0))
+	})
+
+	It("Route whitelisted org and space", func() {
+		orgName := "test-org-name"
+		spaceName := "test-space-name"
+
+		noCache.SetOrgName(orgName)
+		noCache.SetSpaceName(spaceName)
+
+		orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+		orgIndexMapping := eventrouter.OrgSplunkMapping {
+			Org: orgName,
+			DestinationIndex: "somewhere",
+			Spaces: []string { "someTestSpace", spaceName, "someOtherTestSpace" },
+		}
+		orgIndexMappings = append(orgIndexMappings, orgIndexMapping)
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStart,HttpStop,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			OrgIndexMappings: orgIndexMappings,
+		}
+
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(1))
+		Expect(len(memSink.Messages)).To(Equal(1))
+	})
+
+	It("Route whitelisted org and non-whitelisted space", func() {
+		orgName := "test-org-name"
+		spaceName := "test-space-name"
+
+		noCache.SetOrgName(orgName)
+		noCache.SetSpaceName(spaceName)
+
+		orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+		orgIndexMapping := eventrouter.OrgSplunkMapping {
+			Org: orgName,
+			DestinationIndex: "somewhere",
+			Spaces: []string { "someTestSpace", "someOtherTestSpace" },
+		}
+		orgIndexMappings = append(orgIndexMappings, orgIndexMapping)
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStart,HttpStop,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			OrgIndexMappings: orgIndexMappings,
+		}
+
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
 		err := r.Route(msg)
 		Ω(err).ShouldNot(HaveOccurred())
 		Expect(len(memSink.Events)).To(Equal(0))

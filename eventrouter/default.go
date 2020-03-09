@@ -2,6 +2,7 @@ package eventrouter
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cloudfoundry-community/splunk-firehose-nozzle/cache"
 	fevents "github.com/cloudfoundry-community/splunk-firehose-nozzle/events"
@@ -9,19 +10,30 @@ import (
 	"github.com/cloudfoundry/sonde-go/events"
 )
 
+type OrgSplunkMappingConfig struct {
+	Mappings []OrgSplunkMapping `yaml:"mappings"`
+}
+
+type OrgSplunkMapping struct {
+	Org string `yaml:"org"`
+	Spaces []string `yaml:"spaces"`
+	DestinationIndex string `yaml:"destination_index"`
+}
+
 type Config struct {
 	SelectedEvents string
+	OrgIndexMappings []OrgSplunkMapping
 }
 
 type router struct {
 	appCache       cache.Cache
 	sink           eventsink.Sink
 	selectedEvents map[string]bool
+	orgIndexMappings []OrgSplunkMapping
 }
 
 func New(appCache cache.Cache, sink eventsink.Sink, config *Config) (Router, error) {
 	selectedEvents, err := fevents.ParseSelectedEvents(config.SelectedEvents)
-
 	if err != nil {
 		return nil, err
 	}
@@ -30,6 +42,7 @@ func New(appCache cache.Cache, sink eventsink.Sink, config *Config) (Router, err
 		appCache:       appCache,
 		sink:           sink,
 		selectedEvents: selectedEvents,
+		orgIndexMappings: config.OrgIndexMappings,
 	}, nil
 }
 
@@ -71,6 +84,31 @@ func (r *router) Route(msg *events.Envelope) error {
 		event.AnnotateWithAppData(r.appCache)
 	}
 
+	if r.orgIndexMappings != nil && len(r.orgIndexMappings) > 0 {
+		var orgName string
+		hasOrgNameString := false
+		org, hasOrgName := event.Fields["cf_org_name"]
+		if (hasOrgName) {
+			orgName, hasOrgNameString = org.(string)
+		}
+
+		var spaceName string
+		hasSpaceNameString := false
+		space, hasSpaceName := event.Fields["cf_space_name"]
+		if (hasSpaceName) {
+			spaceName, hasSpaceNameString = space.(string)
+		}
+
+		if (hasOrgNameString && hasSpaceNameString) {
+			mappedSplunkIndex := r.getOrgSplunkIndex(orgName, spaceName)
+			if mappedSplunkIndex == nil {
+				return nil
+			}
+
+			event.Fields["info_splunk_index"] = *mappedSplunkIndex
+		}
+	}
+
 	if ignored, ok := event.Fields["cf_ignored_app"]; ok {
 		if ignoreApp, ok := ignored.(bool); ok && ignoreApp {
 			// Ignore events from this app since end user tag to ignore this app
@@ -82,6 +120,26 @@ func (r *router) Route(msg *events.Envelope) error {
 	if err != nil {
 		fields := map[string]interface{}{"err": fmt.Sprintf("%s", err)}
 		r.sink.Write(fields, "Failed to write events")
+		return err
 	}
-	return err
+
+	return nil
+}
+
+func (r *router) getOrgSplunkIndex(org string, space string) *string {
+	for _, mapping := range r.orgIndexMappings {
+		if strings.EqualFold(org, mapping.Org) {
+			if mapping.Spaces == nil || len(mapping.Spaces) == 0 {
+				return &mapping.DestinationIndex
+			}
+
+			for _, mappingSpace := range mapping.Spaces {
+				if strings.EqualFold(space, mappingSpace) {
+					return &mapping.DestinationIndex
+				}
+			}
+		}
+	}
+
+	return nil
 }
