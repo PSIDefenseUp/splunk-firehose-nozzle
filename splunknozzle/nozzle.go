@@ -48,7 +48,7 @@ func (s *SplunkFirehoseNozzle) getMappingsFromConfig(yamlConfig string) ([]event
 // EventRouter creates EventRouter object and setup routes for interested events
 func (s *SplunkFirehoseNozzle) EventRouter(cache cache.Cache, eventSink eventsink.Sink) (eventrouter.Router, error) {
 	orgIndexMappings := []eventrouter.OrgSplunkMapping {}
-	if (s.config.OrgConfigFilepath != "") {
+	if s.config.OrgConfigFilepath != "" {
 		orgConfigYaml, err := ioutil.ReadFile(s.config.OrgConfigFilepath)
 		if err != nil {
 			return nil, err

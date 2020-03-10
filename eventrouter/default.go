@@ -21,15 +21,17 @@ type OrgSplunkMapping struct {
 }
 
 type Config struct {
-	SelectedEvents string
-	OrgIndexMappings []OrgSplunkMapping
+	SelectedEvents        string
+	OrgIndexMappings      []OrgSplunkMapping
+	BlacklistNonAppEvents bool
 }
 
 type router struct {
-	appCache       cache.Cache
-	sink           eventsink.Sink
-	selectedEvents map[string]bool
-	orgIndexMappings []OrgSplunkMapping
+	appCache              cache.Cache
+	sink                  eventsink.Sink
+	selectedEvents        map[string]bool
+	orgIndexMappings      []OrgSplunkMapping
+	blacklistNonAppEvents bool
 }
 
 func New(appCache cache.Cache, sink eventsink.Sink, config *Config) (Router, error) {
@@ -43,6 +45,7 @@ func New(appCache cache.Cache, sink eventsink.Sink, config *Config) (Router, err
 		sink:           sink,
 		selectedEvents: selectedEvents,
 		orgIndexMappings: config.OrgIndexMappings,
+		blacklistNonAppEvents: config.BlacklistNonAppEvents,
 	}, nil
 }
 
@@ -80,26 +83,34 @@ func (r *router) Route(msg *events.Envelope) error {
 	event.AnnotateWithEnvelopeData(msg)
 	event.AnnotateWithCFMetaData()
 
-	if _, hasAppId := event.Fields["cf_app_id"]; hasAppId {
+	var appIdStr string
+	hasAppIdStr := false
+	if appId, hasAppId := event.Fields["cf_app_id"]; hasAppId {
+		appIdStr, hasAppIdStr = appId.(string)
+	}
+
+	if hasAppIdStr && appIdStr != "" {
 		event.AnnotateWithAppData(r.appCache)
+	} else if r.blacklistNonAppEvents{
+		return nil
 	}
 
 	if r.orgIndexMappings != nil && len(r.orgIndexMappings) > 0 {
 		var orgName string
 		hasOrgNameString := false
 		org, hasOrgName := event.Fields["cf_org_name"]
-		if (hasOrgName) {
+		if hasOrgName {
 			orgName, hasOrgNameString = org.(string)
 		}
 
 		var spaceName string
 		hasSpaceNameString := false
 		space, hasSpaceName := event.Fields["cf_space_name"]
-		if (hasSpaceName) {
+		if hasSpaceName {
 			spaceName, hasSpaceNameString = space.(string)
 		}
 
-		if (hasOrgNameString && hasSpaceNameString) {
+		if hasOrgNameString && hasSpaceNameString {
 			mappedSplunkIndex := r.getOrgSplunkIndex(orgName, spaceName)
 			if mappedSplunkIndex == nil {
 				return nil
@@ -108,6 +119,7 @@ func (r *router) Route(msg *events.Envelope) error {
 			event.Fields["info_splunk_index"] = *mappedSplunkIndex
 		}
 	}
+
 
 	if ignored, ok := event.Fields["cf_ignored_app"]; ok {
 		if ignoreApp, ok := ignored.(bool); ok && ignoreApp {
