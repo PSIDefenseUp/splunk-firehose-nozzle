@@ -113,10 +113,10 @@ This is recommended for dev environments only.
       spaces:
       - space-a
       - space-b
-      target_splunk_index: splunk-index-a
+      destination_index: splunk-index-a
     # send messages from this org in any space to the given index
     - org: org-name-b
-      target_splunk_index: splunk-index-b
+      destination_index: splunk-index-b
     ```
 - - - -
 
