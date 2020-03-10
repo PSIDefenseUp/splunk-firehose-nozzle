@@ -1,6 +1,5 @@
 package: github.com/cloudfoundry-community/splunk-firehose-nozzle
 import:
-- package: gopkg.in/yaml.v2
 - package: code.cloudfoundry.org/cfhttp
 - package: code.cloudfoundry.org/cflager
 - package: code.cloudfoundry.org/lager
@@ -14,3 +13,5 @@ import:
 - package: github.com/kelseyhightower/envconfig
 - package: github.com/pkg/errors
   version: ~0.8.0
+- package: gopkg.in/yaml.v2
+  version: v2.2.8

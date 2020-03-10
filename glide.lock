@@ -1,5 +1,5 @@
-hash: d7f08c29071249b8d7e8aefbf8edb471ad8dd236599c784787c35c06c9d55747
-updated: 2019-06-24T13:35:17.515998-07:00
+hash: c3c99f6b5151fe8392a82ab3a615dfb2b9999fc20a1e6cd20e035eb3e298804e
+updated: 2020-03-10T09:39:52.167543-05:00
 imports:
 - name: code.cloudfoundry.org/cfhttp
   version: 1d363866d79a7203ee22ee605a9ac6081b56c9a0
@@ -88,6 +88,8 @@ imports:
   - urlfetch
 - name: gopkg.in/alecthomas/kingpin.v2
   version: e9044be3ab2a8e11d4e1f418d12f0790d57e8d70
+- name: gopkg.in/yaml.v2
+  version: 53403b58ad1b561927d19068c655246f2db79d48
 testImports:
 - name: github.com/onsi/ginkgo
   version: a8ccd817611666211fdf6e6a752174a0db8374a8
