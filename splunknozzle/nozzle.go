@@ -63,6 +63,7 @@ func (s *SplunkFirehoseNozzle) EventRouter(cache cache.Cache, eventSink eventsin
 	config := &eventrouter.Config{
 		SelectedEvents: s.config.WantedEvents,
 		OrgIndexMappings: orgIndexMappings,
+		BlacklistNonAppEvents: s.config.BlacklistNonAppEvents,
 	}
 
 	return eventrouter.New(cache, eventSink, config)
