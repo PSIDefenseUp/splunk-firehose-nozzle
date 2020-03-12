@@ -3,6 +3,7 @@ package eventrouter_test
 import (
 	. "github.com/cloudfoundry-community/splunk-firehose-nozzle/eventrouter"
 	"github.com/cloudfoundry-community/splunk-firehose-nozzle/testing"
+	"github.com/cloudfoundry-community/splunk-firehose-nozzle/eventrouter"
 	"github.com/cloudfoundry/sonde-go/events"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -144,6 +145,158 @@ var _ = Describe("eventrouter", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		Expect(len(memSink.Events)).To(Equal(0))
 		Expect(len(memSink.Messages)).To(Equal(0))
+	})
+
+	It("Route whitelisted org", func() {
+		eventType = events.Envelope_LogMessage
+		orgName := "test-org-name"
+
+		noCache.SetOrgName(orgName)
+
+		orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+		orgIndexMappings = append(orgIndexMappings, eventrouter.OrgSplunkMapping { Org: orgName, DestinationIndex: "somewhere" })
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			OrgIndexMappings: orgIndexMappings,
+		}
+
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(1))
+		Expect(len(memSink.Messages)).To(Equal(1))
+	})
+
+	It("Route org log when no org-index mappings provided", func() {
+		eventType = events.Envelope_LogMessage
+
+		orgName := "test-org-name"
+
+		noCache.SetOrgName(orgName)
+
+		orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			OrgIndexMappings: orgIndexMappings,
+		}
+
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(1))
+		Expect(len(memSink.Messages)).To(Equal(1))
+	})
+
+	It("Route non-whitelisted org", func() {
+		eventType = events.Envelope_LogMessage
+
+		noCache.SetOrgName("some-other-org-name")
+
+		orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+		orgIndexMapping := eventrouter.OrgSplunkMapping {
+			Org: "someorg",
+			DestinationIndex: "somewhere",
+		}
+		orgIndexMappings = append(orgIndexMappings, orgIndexMapping)
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			OrgIndexMappings: orgIndexMappings,
+		}
+
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(0))
+		Expect(len(memSink.Messages)).To(Equal(0))
+	})
+
+	It("Route whitelisted org and space", func() {
+		eventType = events.Envelope_LogMessage
+		orgName := "test-org-name"
+		spaceName := "test-space-name"
+
+		noCache.SetOrgName(orgName)
+		noCache.SetSpaceName(spaceName)
+
+		orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+		orgIndexMapping := eventrouter.OrgSplunkMapping {
+			Org: orgName,
+			DestinationIndex: "somewhere",
+			Spaces: []string { "someTestSpace", spaceName, "someOtherTestSpace" },
+		}
+		orgIndexMappings = append(orgIndexMappings, orgIndexMapping)
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			OrgIndexMappings: orgIndexMappings,
+		}
+
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(1))
+		Expect(len(memSink.Messages)).To(Equal(1))
+	})
+
+	It("Route whitelisted org and non-whitelisted space", func() {
+		eventType = events.Envelope_LogMessage
+
+		orgName := "test-org-name"
+		spaceName := "test-space-name"
+
+		noCache.SetOrgName(orgName)
+		noCache.SetSpaceName(spaceName)
+
+		orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+		orgIndexMapping := eventrouter.OrgSplunkMapping {
+			Org: orgName,
+			DestinationIndex: "somewhere",
+			Spaces: []string { "someTestSpace", "someOtherTestSpace" },
+		}
+		orgIndexMappings = append(orgIndexMappings, orgIndexMapping)
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			OrgIndexMappings: orgIndexMappings,
+		}
+
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(0))
+		Expect(len(memSink.Messages)).To(Equal(0))
+	})
+
+	It("Route Blacklist-Non-App-Events is enabled", func() {
+		eventType = events.Envelope_LogMessage
+
+		config := &Config{
+			SelectedEvents: "LogMessage,HttpStartStop,ValueMetric,CounterEvent,Error,ContainerMetric",
+			BlacklistNonAppEvents: true,
+		}
+		r, err = New(noCache, memSink, config)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		msg.LogMessage.AppId = nil
+
+		err := r.Route(msg)
+		Ω(err).ShouldNot(HaveOccurred())
+		Expect(len(memSink.Events)).To(Equal(0))
+		Expect(len(memSink.Messages)).To(Equal(0))
+
 	})
 
 	It("Route sink error", func() {

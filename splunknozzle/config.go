@@ -40,6 +40,8 @@ type Config struct {
 
 	BoltDBPath   string `json:"boltdb-path"`
 	WantedEvents string `json:"wanted-events"`
+	OrgConfigFilepath     string     `json:"org-config-filepath"`
+	BlacklistNonAppEvents bool       `json:"blacklist-non-app-events"`
 	ExtraFields  string `json:"extra-fields"`
 
 	FlushInterval time.Duration `json:"flush-interval"`
@@ -119,6 +121,10 @@ func NewConfigFromCmdFlags(version, branch, commit, buildos string) *Config {
 		Default("cache.db").OverrideDefaultFromEnvar("BOLTDB_PATH").StringVar(&c.BoltDBPath)
 	kingpin.Flag("events", fmt.Sprintf("Comma separated list of events you would like. Valid options are %s", events.AuthorizedEvents())).
 		OverrideDefaultFromEnvar("EVENTS").Default("ValueMetric,CounterEvent,ContainerMetric").StringVar(&c.WantedEvents)
+	kingpin.Flag("org-config-filepath", "The path to the config file (if any) to use for mapping orgs and spaces to the splunk indices their logs should be forwarded to.").
+		OverrideDefaultFromEnvar("ORG_INDEX_MAPPING_FILEPATH").Default("").StringVar(&c.OrgConfigFilepath)
+	kingpin.Flag("blacklist-non-app-events", "Enable blacklisting of non-app-events- events that lack a 'cf_app_id' property will not be pushed to HEC.").
+		OverrideDefaultFromEnvar("BLACKLIST_NON_APP_EVENTS").Default("false").BoolVar(&c.BlacklistNonAppEvents)
 	kingpin.Flag("extra-fields", "Extra fields you want to annotate your events with, example: '--extra-fields=env:dev,something:other ").
 		OverrideDefaultFromEnvar("EXTRA_FIELDS").Default("").StringVar(&c.ExtraFields)
 

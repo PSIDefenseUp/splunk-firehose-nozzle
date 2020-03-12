@@ -16,7 +16,7 @@ var _ = Describe("Events", func() {
 	)
 
 	BeforeEach(func() {
-		fcache = &testing.MemoryCacheMock{}
+		fcache = testing.NewMemoryCacheMock()
 		msg = NewLogMessage()
 		event = fevents.LogMessage(msg)
 		event.AnnotateWithEnvelopeData(msg)

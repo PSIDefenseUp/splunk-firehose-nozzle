@@ -2,6 +2,8 @@ package splunknozzle
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"os"
 
 	"code.cloudfoundry.org/lager"
@@ -31,11 +33,42 @@ func NewSplunkFirehoseNozzle(config *Config) *SplunkFirehoseNozzle {
 	}
 }
 
+func (s *SplunkFirehoseNozzle) getMappingsFromConfig(yamlConfig string) ([]eventrouter.OrgSplunkMapping, error) {
+	mappingConfig := eventrouter.OrgSplunkMappingConfig{}
+
+	err := yaml.Unmarshal([]byte(yamlConfig), &mappingConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if mappingConfig.Mappings == nil {
+		mappingConfig.Mappings = []eventrouter.OrgSplunkMapping {}
+	}
+
+	return mappingConfig.Mappings, nil
+}
+
 // EventRouter creates EventRouter object and setup routes for interested events
 func (s *SplunkFirehoseNozzle) EventRouter(cache cache.Cache, eventSink eventsink.Sink) (eventrouter.Router, error) {
+	orgIndexMappings := []eventrouter.OrgSplunkMapping {}
+	if s.config.OrgConfigFilepath != "" {
+		orgConfigYaml, err := ioutil.ReadFile(s.config.OrgConfigFilepath)
+		if err != nil {
+			return nil, err
+		}
+
+		orgIndexMappings, err = s.getMappingsFromConfig(string(orgConfigYaml))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	config := &eventrouter.Config{
 		SelectedEvents: s.config.WantedEvents,
+		OrgIndexMappings: orgIndexMappings,
+		BlacklistNonAppEvents: s.config.BlacklistNonAppEvents,
 	}
+
 	return eventrouter.New(cache, eventSink, config)
 }
 

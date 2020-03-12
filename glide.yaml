@@ -15,3 +15,5 @@ import:
   version: ~0.8.0
 - package: code.cloudfoundry.org/go-diodes
 - package: code.cloudfoundry.org/go-loggregator
+- package: github.com/go-martini/martini
+  version: v1.0
