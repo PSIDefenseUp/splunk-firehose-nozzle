@@ -100,8 +100,24 @@ This is recommended for dev environments only.
     For Splunk version 6.3 or below, please deploy nozzle via CLI. Update nozzle_manifest.yml with splunk_version (eg:- SPLUNK_VERSION: 6.3) as an env variable and [deploy nozzle as an app via CLI](#push-as-an-app-to-cloud-foundry).
     
     **[Tile](https://network.pivotal.io/products/splunk-nozzle/)** only supports deployment for Splunk version 6.4 or above
-    
-- - - -
+* `ORG_INDEX_MAPPING_FILEPATH`: The path to a config file mapping Cloud Foundry orgs to Splunk indices. If provided, uses the specified file to route logs to Splunk and discards any messages for unmapped orgs. Messages not linked to a CF app will be routed to the index specified by `SPLUNK_INDEX`.
+
+    config file example:
+    ```yaml
+
+    # any orgs not configured here will have their logs discarded
+    mappings:
+    # send messages from this org and within the listed spaces to the given index
+    # messages from other spaces in this org will be discarded
+    - org: org-name-a
+      spaces:
+      - space-a
+      - space-b
+      destination_index: splunk-index-a
+    # send messages from this org in any space to the given index
+    - org: org-name-b
+      destination_index: splunk-index-b
+    ```- - - -
 
 ### Push as an App to Cloud Foundry
 
