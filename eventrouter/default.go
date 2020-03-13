@@ -80,10 +80,6 @@ func (r *router) Route(msg *events.Envelope) error {
 	event.AnnotateWithEnvelopeData(msg)
 	event.AnnotateWithCFMetaData()
 
-	if _, hasAppId := event.Fields["cf_app_id"]; hasAppId {
-		event.AnnotateWithAppData(r.appCache)
-	}
-
 	var appIdStr string
 	hasAppIdStr := false
 	if appId, hasAppId := event.Fields["cf_app_id"]; hasAppId {
