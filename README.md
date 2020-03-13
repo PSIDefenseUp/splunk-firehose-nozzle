@@ -117,7 +117,7 @@ This is recommended for dev environments only.
     # send messages from this org in any space to the given index
     - org: org-name-b
       destination_index: splunk-index-b
-    ```- - - -
+    ```
 
 ### Push as an App to Cloud Foundry
 
